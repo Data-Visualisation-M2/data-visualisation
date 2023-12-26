@@ -1,0 +1,19 @@
+name: Datavisualisation linter
+on:
+  pull_request:
+    branches:
+      - main
+jobs:
+  lint:
+    name: Check the source code
+    - use: actions/checkout@v3
+    - use: actions/setup-node@v3
+    with:
+      node-version: '16'
+      cache: 'npm'
+    runs-on: ubuntu-latest
+    steps:
+      - name: NPM Packages installation
+      run : npm install
+      - name: Run the lint
+      run : npm run lint
