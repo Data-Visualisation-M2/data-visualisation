@@ -1,28 +1,14 @@
-import * as path from 'path';
-// Get paths of Gatsby's required rules, which as of writing is located at:
-// https://github.com/gatsbyjs/gatsby/tree/fbfe3f63dec23d279a27b54b4057dd611dce74bb/packages/
-// gatsby/src/utils/eslint-rules
-const gatsbyRequiredRules = path.join(
-  process.cwd(),
-  "node_modules",
-  "gatsby",
-  "dist",
-  "utils",
-  "eslint-rules",
-);
+import type { GatsbyConfig } from "gatsby"
 
-module.exports = {
-    pathPrefix:"/",
-    siteMetadata: {
-      title: `Datavisualisation - Projet - Quentin CHAPEL`,
-    },
-    plugins: [
-    ],
-  }
+const config: GatsbyConfig = {
+  siteMetadata: {
+    siteUrl: `https://www.yourdomain.tld`,
+  },
+  // More easily incorporate content into your pages through automatic TypeScript type generation and better GraphQL IntelliSense.
+  // If you use VSCode you can also use the GraphQL plugin
+  // Learn more at: https://gatsby.dev/graphql-typegen
+  graphqlTypegen: true,
+  plugins: [],
+}
 
-require('ts-node').register({
-    compilerOptions: {
-        module: 'commonjs',
-        target: 'es2017',
-    },
-})
+export default config
