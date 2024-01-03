@@ -26,18 +26,25 @@
   <script>
     var width = 700,
       height = 580;
+    
+    var margin = { top: 20, right: 20, bottom: 20, left: 20 };
 
     var svg = d3
       .select("body")
       .append("svg")
-      .attr("width", width)
-      .attr("height", height);
+      .attr("width", width + margin.left + margin.right)
+      .attr("height", height + margin.top + margin.bottom)
+      .append("g")
+      .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
     var tooltip = d3
       .select("body")
       .append("div")
       .attr("class", "hidden tooltip");
 
+    var color = d3.scaleQuantize()
+    .range(["#edf8e9", "#bae4b3", "#74c476","#31a354","#006d2c"])
+    
     // On rajoute un groupe englobant toute la visualisation pour plus tard
     var g = svg.append("g");
 
@@ -47,74 +54,244 @@
       .scale([500]);
 
     var path = d3.geoPath().projection(projection);
+/*
+    d3.json("data.json").then(function(data){
+      d3.json("velovPosition.json").then(function (position) {
+        // Set up SVG container with margins
+        var margin = { top: 20, right: 20, bottom: 20, left: 20 };
+        var width = 500 - margin.left - margin.right;
+        var height = 500 - margin.top - margin.bottom; // Define scales
 
-    d3.json("velovPosition.json").then(function (data) {
+        for(var i = 0; i<data['features'][i].length;i++){
+          var dataStationID = data['features'][i]['properties'].number;
+          for(var j = 0;j<position.features.length;j++){
+            var jsonStationID = position.features[i].properties.idstation;
+            if(dataStationID === jsonStationID){
+              /*let availabilities = data['values'][j]['main_stands']['availabilities'];
+              let capacity = data['values'][j]['main_stands']['capacity'];
+              position.features[i].properties.value = 
+                (
+                  availabilities.bikes+
+                  availabilities.electricalBikes+
+                  availabilities.electricalInternalBatteryBikes+
+                  availabilities.electricalRemovableBatteryBikes+
+                  availabilities.mechanicalBikes)
+                /capacity;
+              availabilities['capacities'] = capacity
+              position.features[i].properties.data = availabilities;
+              if(data.properties[j].status !== "OPEN"){
+                position.features[i].properties.data["status"] = data.properties[j].status;
+              }*//*
+              console.log("Trouvé!")
+            }
+          }
+        }
+
+        var xScale = d3
+          .scaleLinear()
+          .domain([
+            d3.min(position.features, (d) => d.geometry.coordinates[0]),
+            d3.max(position.features, (d) => d.geometry.coordinates[0])
+          ])
+          .range([0, width]);
+
+        var yScale = d3
+          .scaleLinear()
+          .domain([
+            d3.min(position.features, (d) => d.geometry.coordinates[1]),
+            d3.max(position.features, (d) => d.geometry.coordinates[1])
+          ])
+          .range([height, 0]);
+        // Plot the points with initial translation
+        var points = svg
+          .selectAll("circle")
+          .data(position.features)
+          .enter()
+          .append("circle")
+          .attr("cx", function (d) {
+            return xScale(d.geometry.coordinates[0]) + margin.left; // Add margin.left to move points
+          })
+          .attr("cy", function (d) {
+            return yScale(d.geometry.coordinates[1]) + margin.top; // Add margin.top to move points
+          })
+          .attr("r", 5) // Initial radius
+          //.style("fill", "blue")
+          .style("fill",d=>{
+            if(d.properties.data){
+              console.log(d.properties.data);
+              let status = d.properties.data.status;
+              let value = d.properties.value;
+              if(status){
+                return "black";
+              }else if(value){
+                return color(value);
+              }else{
+                return "blue"
+              }
+            }else{
+              return "black"
+            }
+          })
+          //Our new hover effects
+          .on("mousemove", function (d, i) {
+            var mousePosition = [d.x, d.y];
+            var htmlText = i.properties.nom + "(" + i.properties.commune + ")";
+            if(i.properties.data){
+              let availabilities = i.properties.data;
+              htmlText += "<br><ul>"+
+                "<li>Capacité maximale : "+availabilities.capacities+"</li>"+
+                "<li>Vélos electriques : "+availabilities.electricalBikes+"</li>"+
+                "<li>Vélos electriques (batterie interne) : "+availabilities.electricalInternalBatteryBikes+"</li>"+
+                "<li>Vélos electriques (batterie externe) : "+availabilities.electricalRemovableBatteryBikes+"</li>"+
+                "<li>Vélos méchaniques : "+availabilities.mechanicalBikes+"</li>"+
+                "<li>Stands : "+availabilities.stands+"</li>"+
+                "</ul>"
+            }else{
+              htmlText += "<br/>Aucune pour le jour en cours!"
+            }
+            tooltip
+              .classed("hidden", false)
+              .attr(
+                "style",
+                "left:" +
+                  (mousePosition[0] + 1) +
+                  "px; top:" +
+                  (mousePosition[1] - 35) +
+                  "px"
+              )
+              .html(htmlText);
+          })
+          .on("mouseout", function (d, i) {
+            //d3.select(this).transition().duration("50").attr("opacity", "1");
+            tooltip.classed("hidden", true);
+          });
+
+        // Add zoom functionality
+        var zoom = d3
+          .zoom()
+          .scaleExtent([1, 10])
+          .on("zoom", function (event) {
+            // Update point radius based on zoom scale
+            points.attr("r", 5 / event.transform.k); // Adjust 5 as needed
+            svg.attr("transform", event.transform);
+            svg.attr("width", 500).attr("height", 500);
+          });
+
+        svg.call(zoom);
+      });
+    })*/
+    d3.json("data.json").then(function(data) {
       // Set up SVG container with margins
       var margin = { top: 20, right: 20, bottom: 20, left: 20 };
       var width = 500 - margin.left - margin.right;
-      var height = 500 - margin.top - margin.bottom; // Define scales
-      var xScale = d3
-        .scaleLinear()
-        .domain([
-          d3.min(data.features, (d) => d.geometry.coordinates[0]),
-          d3.max(data.features, (d) => d.geometry.coordinates[0])
-        ])
-        .range([0, width]);
+      var height = 500 - margin.top - margin.bottom;
 
-      var yScale = d3
-        .scaleLinear()
-        .domain([
-          d3.min(data.features, (d) => d.geometry.coordinates[1]),
-          d3.max(data.features, (d) => d.geometry.coordinates[1])
-        ])
-        .range([height, 0]);
+      for(var i = 0;i<data.features.length;i++){
+        let currentData = data.features[i].properties;
+        let availabilities = currentData.main_stands.availabilities;
+        let capacity = currentData.total_stands.capacity;
+        currentData.value = 
+        (
+          availabilities.bikes+
+          availabilities.electricalBikes+
+          availabilities.electricalInternalBatteryBikes+
+          availabilities.electricalRemovableBatteryBikes+
+          availabilities.mechanicalBikes
+        )
+        /capacity;
+        availabilities['capacities'] = capacity
+        currentData.data = availabilities;
+        if(data.features[i].status === "OPEN" || data.features[i].status === "CLOSED"){
+          currentData.data["status"] = data.features[i].status;
+        }
+        if(!currentData.value){
+          currentData.value = 0.000001;
+        }
+      }
+
+      // Define scales
+      var xScale = d3.scaleLinear()
+          .domain([d3.min(data.features, d => d.geometry.coordinates[0]), d3.max(data.features, d => d.geometry.coordinates[0])])
+          .range([0, width]);
+
+      var yScale = d3.scaleLinear()
+          .domain([d3.min(data.features, d => d.geometry.coordinates[1]), d3.max(data.features, d => d.geometry.coordinates[1])])
+          .range([height, 0]);
 
       // Plot the points with initial translation
-      var points = svg
-        .selectAll("circle")
-        .data(data.features)
-        .enter()
-        .append("circle")
-        .attr("cx", function (d) {
-          return xScale(d.geometry.coordinates[0]) + margin.left; // Add margin.left to move points
-        })
-        .attr("cy", function (d) {
-          return yScale(d.geometry.coordinates[1]) + margin.top; // Add margin.top to move points
-        })
-        .attr("r", 5) // Initial radius
-        .style("fill", "blue")
-        //Our new hover effects
-        .on("mousemove", function (d, i) {
-          var mousePosition = [d.x, d.y];
-          tooltip
-            .classed("hidden", false)
-            .attr(
-              "style",
-              "left:" +
-                (mousePosition[0] + 1) +
-                "px; top:" +
-                (mousePosition[1] - 35) +
-                "px"
-            )
-            .html(i.properties.nom + "(" + i.properties.commune + ")");
-        })
-        .on("mouseout", function (d, i) {
-          //d3.select(this).transition().duration("50").attr("opacity", "1");
-          tooltip.classed("hidden", true);
-        });
+      var points = svg.selectAll("circle")
+          .data(data.features)
+          .enter()
+          .append("circle")
+          .attr("cx", function(d) {
+              return xScale(d.geometry.coordinates[0]) + margin.left; // Add margin.left to move points
+          })
+          .attr("cy", function(d) {
+              return yScale(d.geometry.coordinates[1]) + margin.top; // Add margin.top to move points
+          })
+          .attr("r", 5) // Initial radius
+          .style("fill", (d)=>{
+            //return "blue"
+            if(d.properties.data){
+              console.log(d.properties.data);
+              let status = d.properties.data.status;
+              let value = d.properties.value;
+              if(status){
+                return "black";
+              }else if(value){
+                return color(value);
+              }else{
+                return "blue"
+              }
+            }else{
+              return "black"
+            }
+          })
+          //Our new hover effects
+          .on("mousemove", function (d, i) {
+            var mousePosition = [d.x, d.y];
+            var htmlText = i.properties.name + "(" + i.properties.commune + ")";
+            if(i.properties.data){
+              let availabilities = i.properties.data;
+              htmlText += "<br><ul>"+
+                "<li>Capacité maximale : "+availabilities.capacities+"</li>"+
+                "<li>Vélos electriques : "+availabilities.electricalBikes+"</li>"+
+                "<li>Vélos electriques (batterie interne) : "+availabilities.electricalInternalBatteryBikes+"</li>"+
+                "<li>Vélos electriques (batterie externe) : "+availabilities.electricalRemovableBatteryBikes+"</li>"+
+                "<li>Vélos méchaniques : "+availabilities.mechanicalBikes+"</li>"+
+                "<li>Stands : "+availabilities.stands+"</li>"+
+                "<li>Valeur : "+i.properties.value+"</li>"+
+                "</ul>"
+            }else{
+              htmlText += "<br/>Aucune pour le jour en cours!"
+            }
+            tooltip
+              .classed("hidden", false)
+              .attr(
+                "style",
+                "left:" +
+                  (mousePosition[0] + 1) +
+                  "px; top:" +
+                  (mousePosition[1] - 35) +
+                  "px"
+              )
+              .html(htmlText);
+          })
+          .on("mouseout", function (d, i) {
+            //d3.select(this).transition().duration("50").attr("opacity", "1");
+            tooltip.classed("hidden", true);
+          });
 
       // Add zoom functionality
-      var zoom = d3
-        .zoom()
-        .scaleExtent([1, 10])
-        .on("zoom", function (event) {
-          // Update point radius based on zoom scale
-          points.attr("r", 5 / event.transform.k); // Adjust 5 as needed
-          svg.attr("transform", event.transform);
-          svg.attr("width", 500).attr("height", 500);
-        });
+      var zoom = d3.zoom()
+          .scaleExtent([1, 10])
+          .on("zoom", function(event) {
+              // Update point radius based on zoom scale
+              points.attr("r", 5 / event.transform.k); // Adjust 5 as needed
+              svg.attr("transform", event.transform);
+          });
 
       svg.call(zoom);
-    });
+  });
   </script>
 </body>
