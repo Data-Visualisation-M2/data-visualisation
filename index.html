@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<head>
+  <meta charset="utf-8" />
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+    body {
+      margin: 0;
+      position: fixed;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      left: 0;
+    }
+    div.tooltip {
+      color: #222;
+      background-color: #fff;
+      padding: 0.5em;
+      text-shadow: #f5f5f5 0 1 px 0;
+      opacity: 0.9;
+      position: absolute;
+    }
+  </style>
+</head>
+
+<body>
+  <script>
+    var width = 700,
+      height = 580;
+
+    var svg = d3
+      .select("body")
+      .append("svg")
+      .attr("width", width)
+      .attr("height", height);
+
+    var tooltip = d3
+      .select("body")
+      .append("div")
+      .attr("class", "hidden tooltip");
+
+    // On rajoute un groupe englobant toute la visualisation pour plus tard
+    var g = svg.append("g");
+
+    var projection = d3
+      .geoAlbersUsa()
+      .translate([width / 2, height / 2])
+      .scale([500]);
+
+    var path = d3.geoPath().projection(projection);
+
+    d3.json("velovPosition.json").then(function (data) {
+      // Set up SVG container with margins
+      var margin = { top: 20, right: 20, bottom: 20, left: 20 };
+      var width = 500 - margin.left - margin.right;
+      var height = 500 - margin.top - margin.bottom; // Define scales
+      var xScale = d3
+        .scaleLinear()
+        .domain([
+          d3.min(data.features, (d) => d.geometry.coordinates[0]),
+          d3.max(data.features, (d) => d.geometry.coordinates[0])
+        ])
+        .range([0, width]);
+
+      var yScale = d3
+        .scaleLinear()
+        .domain([
+          d3.min(data.features, (d) => d.geometry.coordinates[1]),
+          d3.max(data.features, (d) => d.geometry.coordinates[1])
+        ])
+        .range([height, 0]);
+
+      // Plot the points with initial translation
+      var points = svg
+        .selectAll("circle")
+        .data(data.features)
+        .enter()
+        .append("circle")
+        .attr("cx", function (d) {
+          return xScale(d.geometry.coordinates[0]) + margin.left; // Add margin.left to move points
+        })
+        .attr("cy", function (d) {
+          return yScale(d.geometry.coordinates[1]) + margin.top; // Add margin.top to move points
+        })
+        .attr("r", 5) // Initial radius
+        .style("fill", "blue")
+        //Our new hover effects
+        .on("mousemove", function (d, i) {
+          var mousePosition = [d.x, d.y];
+          tooltip
+            .classed("hidden", false)
+            .attr(
+              "style",
+              "left:" +
+                (mousePosition[0] + 1) +
+                "px; top:" +
+                (mousePosition[1] - 35) +
+                "px"
+            )
+            .html(i.properties.nom + "(" + i.properties.commune + ")");
+        })
+        .on("mouseout", function (d, i) {
+          //d3.select(this).transition().duration("50").attr("opacity", "1");
+          tooltip.classed("hidden", true);
+        });
+
+      // Add zoom functionality
+      var zoom = d3
+        .zoom()
+        .scaleExtent([1, 10])
+        .on("zoom", function (event) {
+          // Update point radius based on zoom scale
+          points.attr("r", 5 / event.transform.k); // Adjust 5 as needed
+          svg.attr("transform", event.transform);
+          svg.attr("width", 500).attr("height", 500);
+        });
+
+      svg.call(zoom);
+    });
+  </script>
+</body>
