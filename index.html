@@ -14,7 +14,7 @@
     div.tooltip {
       color: #222;
       background-color: #fff;
-      padding: 0.5em;
+      padding: 0.1em;
       text-shadow: #f5f5f5 0 1 px 0;
       opacity: 0.9;
       position: absolute;
@@ -24,6 +24,57 @@
 
 <body>
   <script>
+    function showBarPlot(data, name) {        // Clear any existing bar plot
+        d3.select("#bar-plot").remove();
+
+        // Create a new SVG group for the bar plot
+        var barPlotGroup = svg.append("g")
+            .attr("id", "bar-plot")
+            .attr("transform", "translate(" + (width - 200) + ", "+(height-100)+")");
+
+        console.log("barPlotGroup dimensions:", barPlotGroup.node().getBBox());
+
+        var barWidth = 30;
+
+        // Create bars
+        barPlotGroup.selectAll("rect")
+            .data(data)
+            .enter().append("rect")
+            .attr("x", function(d, i) { return i * (barWidth + 5); })
+            .attr("y", function(d) { return -d.value; }) // Invert the y-axis for better visualization
+            .attr("width", barWidth)
+            .attr("height", function(d) { return d.value; })
+            .style("fill", "steelblue");
+
+        // Add labels
+        barPlotGroup.selectAll("text")
+            .data(data)
+            .enter().append("text")
+            .attr("x", function(d, i) { return i * (barWidth + 5) + barWidth / 2; })
+            .attr("y", function(d) { return -d.value - 5; }) // Offset the label above the bar
+            .attr("text-anchor", "middle")
+            .attr("class", "label")
+            .text(function(d) { return d.value; });
+
+        
+        barPlotGroup.selectAll("text")
+            .data(data)
+            .enter().append("text")
+            .attr("x", function(d, i) { return i * (barWidth + 5) + barWidth / 2; })
+            .attr("y", function(d) { return 5; }) // Offset the label above the bar
+            .attr("text-anchor", "middle")
+            .attr("class", "label")
+            .text(function(d) { return d.category; });
+
+
+        barPlotGroup.append("text")
+          .attr("x",(width/8))
+          .attr("y",-50)
+          .attr("text-anchor","middle")
+          .style("font-size", "16px")
+          .text("Données")
+    }
+
     var width = 700,
       height = 580;
     
@@ -180,6 +231,56 @@
         svg.call(zoom);
       });
     })*/
+
+  var projection = d3.geoMercator().translate([700/2,580/2])
+  var path = d3.geoPath().projection(projection);
+  d3.json("lyon.json").then((geoJSON)=>{
+    /*
+    // Set up SVG container
+    var width = 500;
+    var height = 500;
+
+    var svg = d3.select("#svg-container")
+        .attr("width", width)
+        .attr("height", height);
+
+    // Create a GeoJSON path generator
+    var path = d3.geoPath();
+
+    // Calculate the bounding box of the entire GeoJSON feature collection
+    var bounds = d3.geoBounds(geoJSON);
+
+    // Define initial scales based on bounding box
+    var xScale = d3.scaleLinear()
+        .domain([bounds[0][0], bounds[1][0]])
+        .range([0, width]);
+
+    var yScale = d3.scaleLinear()
+        .domain([bounds[0][1], bounds[1][1]])
+        .range([height, 0]);
+
+    // Create a zoom behavior with minimum and maximum scales
+    var zoom = d3.zoom()
+        .scaleExtent([1, 10]) // Adjust as needed
+        .on("zoom", function(event) {
+            svg.attr("transform", event.transform);
+        });
+
+    // Apply zoom to the SVG container
+    svg.call(zoom);
+
+    // Draw GeoJSON features
+    svg.selectAll("path")
+        .data(geoJSON.features)
+        .enter().append("path")
+        .attr("d", path)
+        .style("fill", "steelblue")
+        .style("stroke", "grey");
+    
+    // Set an initial zoom level
+    var initialZoom = d3.zoomIdentity.scale(2); // You can adjust the initial zoom level
+    svg.call(zoom.transform, initialZoom);
+    */
     d3.json("data.json").then(function(data) {
       // Set up SVG container with margins
       var margin = { top: 20, right: 20, bottom: 20, left: 20 };
@@ -233,7 +334,6 @@
           .style("fill", (d)=>{
             //return "blue"
             if(d.properties.data){
-              console.log(d.properties.data);
               let status = d.properties.data.status;
               let value = d.properties.value;
               if(status){
@@ -248,11 +348,11 @@
             }
           })
           //Our new hover effects
-          .on("mousemove", function (d, i) {
-            var mousePosition = [d.x, d.y];
-            var htmlText = i.properties.name + "(" + i.properties.commune + ")";
-            if(i.properties.data){
-              let availabilities = i.properties.data;
+          .on("mousemove", function (event, station) {
+            var mousePosition = [event.x, event.y];
+            var htmlText = station.properties.name + "(" + station.properties.commune + ")";
+            if(station.properties.data){
+              let availabilities = station.properties.data;
               htmlText += "<br><ul>"+
                 "<li>Capacité maximale : "+availabilities.capacities+"</li>"+
                 "<li>Vélos electriques : "+availabilities.electricalBikes+"</li>"+
@@ -260,7 +360,6 @@
                 "<li>Vélos electriques (batterie externe) : "+availabilities.electricalRemovableBatteryBikes+"</li>"+
                 "<li>Vélos méchaniques : "+availabilities.mechanicalBikes+"</li>"+
                 "<li>Stands : "+availabilities.stands+"</li>"+
-                "<li>Valeur : "+i.properties.value+"</li>"+
                 "</ul>"
             }else{
               htmlText += "<br/>Aucune pour le jour en cours!"
@@ -277,10 +376,21 @@
               )
               .html(htmlText);
           })
-          .on("mouseout", function (d, i) {
+          .on("mouseout", function (event, station) {
             //d3.select(this).transition().duration("50").attr("opacity", "1");
             tooltip.classed("hidden", true);
-          });
+          })
+          .on("click",(_,station)=>{
+            let availabilities = station.properties.data;
+            data = [
+              {category:'Electriques',value:availabilities.electricalBikes*10 || 0},
+              {category:'Electriques (batterie interne)',value:availabilities.electricalInternalBatteryBikes*10 || 0},
+              {category:'Electriques (batterie externe)',value:availabilities.electricalRemovableBatteryBikes*10 || 0},
+              {category:'Méchaniques',value:availabilities.mechanicalBikes*10 || 0},
+            ]
+            showBarPlot(data,station.properties.name);
+          })
+          ;
 
       // Add zoom functionality
       var zoom = d3.zoom()
@@ -292,6 +402,7 @@
           });
 
       svg.call(zoom);
+    });
   });
   </script>
 </body>
