@@ -23,7 +23,27 @@
 </head>
 
 <body>
+  <div id="currentDate">
+
+  </div>
   <script>
+    var searchValue = document.getElementById("velovStationSearchText");
+    var searchButton = document.getElementById("velovStationSearchButton");
+
+    function onClickSearch(){
+      let searchedStation = searchValue.value;
+      if(searchedStation === undefined ||
+         searchedStation === "" ||
+         searchedStation.includes(searchedStation)
+        ){
+        drawMap(searchedStation);
+      }else{
+        alert("Station inconnue!");
+      }
+    }
+
+    var stationList = [];
+    
     function maxValue(data){
       var max = -1;
       for(var i = 0;i<data.length;i++){
@@ -42,8 +62,7 @@
         var barPlotGroup = d3.select("body").select("svg").append("g")
             .attr("id", "bar-plot")
             .attr("transform", "translate(" + (width - 200) + ", "+(height-200)+")");
-
-        console.log("barPlotGroup dimensions:", barPlotGroup.node().getBBox());
+            
 
         var barWidth = 30;
         var barSpacing = 5;
@@ -54,7 +73,7 @@
         var labelOffset = 20;
 
         var max = maxValue(data);
-        console.log("Max : "+max);
+        
 
         // Create bars
         barPlotGroup.selectAll("rect")
@@ -153,129 +172,158 @@
 
     var projection = d3.geoMercator().translate([700/2,580/2])
     var path = d3.geoPath().projection(projection);
-  d3.json("lyon.json").then((geoJSON)=>{
-    d3.json("data.json").then(function(data) {
-      // Set up SVG container with margins
-      var margin = { top: 20, right: 20, bottom: 20, left: 20 };
-      var width = 500 - margin.left - margin.right;
-      var height = 500 - margin.top - margin.bottom;
+  
+  function drawMap(selectedStation){
+    d3.json("lyon.json").then((geoJSON)=>{
+      d3.json("data.json").then(function(data) {
+        // Set up SVG container with margins
+        var margin = { top: 20, right: 20, bottom: 20, left: 20 };
+        var width = 500 - margin.left - margin.right;
+        var height = 500 - margin.top - margin.bottom;
 
-      for(var i = 0;i<data.features.length;i++){
-        let currentData = data.features[i].properties;
-        let availabilities = currentData.main_stands.availabilities;
-        let capacity = currentData.total_stands.capacity;
-        currentData.value = 
-        (
-          availabilities.bikes+
-          availabilities.electricalBikes+
-          availabilities.electricalInternalBatteryBikes+
-          availabilities.electricalRemovableBatteryBikes+
-          availabilities.mechanicalBikes
-        )
-        /capacity;
-        availabilities['capacities'] = capacity
-        currentData.data = availabilities;
-        if(data.features[i].status === "OPEN" || data.features[i].status === "CLOSED"){
-          currentData.data["status"] = data.features[i].status;
+        var lastUpdateDate = data.features[0].properties.last_update_gl.replace(/\.\d+/,"").substring(0,19).replace("T"," ");
+
+        for(var i = 0;i<data.features.length;i++){
+          let currentData = data.features[i].properties;
+          let availabilities = currentData.main_stands.availabilities;
+          let capacity = currentData.total_stands.capacity;
+          currentData.value = 
+          (
+            availabilities.bikes+
+            availabilities.electricalBikes+
+            availabilities.electricalInternalBatteryBikes+
+            availabilities.electricalRemovableBatteryBikes+
+            availabilities.mechanicalBikes
+          )
+          /capacity;
+          availabilities['capacities'] = capacity
+          currentData.data = availabilities;
+          if(data.features[i].status === "OPEN" || data.features[i].status === "CLOSED"){
+            currentData.data["status"] = data.features[i].status;
+          }
+          if(!currentData.value){
+            currentData.value = 0.000001;
+          }
+          if(currentData.name){
+            let number = currentData.number;
+            let commune = currentData.commune? currentData.commune : "";
+            let stationName = currentData.name;
+            stationList.push(stationName);
+          }
         }
-        if(!currentData.value){
-          currentData.value = 0.000001;
-        }
-      }
+        
+        document.getElementById("currentDate").innerHTML = "Actuellement "+lastUpdateDate;
 
-      // Define scales
-      var xScale = d3.scaleLinear()
-          .domain([d3.min(data.features, d => d.geometry.coordinates[0]), d3.max(data.features, d => d.geometry.coordinates[0])])
-          .range([0, width]);
+        // Define scales
+        var xScale = d3.scaleLinear()
+            .domain([d3.min(data.features, d => d.geometry.coordinates[0]), d3.max(data.features, d => d.geometry.coordinates[0])])
+            .range([0, width]);
 
-      var yScale = d3.scaleLinear()
-          .domain([d3.min(data.features, d => d.geometry.coordinates[1]), d3.max(data.features, d => d.geometry.coordinates[1])])
-          .range([height, 0]);
+        var yScale = d3.scaleLinear()
+            .domain([d3.min(data.features, d => d.geometry.coordinates[1]), d3.max(data.features, d => d.geometry.coordinates[1])])
+            .range([height, 0]);
 
-      // Plot the points with initial translation
-      var points = svg.selectAll("circle")
-          .data(data.features)
-          .enter()
-          .append("circle")
-          .attr("cx", function(d) {
-              return xScale(d.geometry.coordinates[0]) + margin.left; // Add margin.left to move points
-          })
-          .attr("cy", function(d) {
-              return yScale(d.geometry.coordinates[1]) + margin.top; // Add margin.top to move points
-          })
-          .attr("r", 5) // Initial radius
-          .style("fill", (d)=>{
-            //return "blue"
-            if(d.properties.data){
-              let status = d.properties.data.status;
-              let value = d.properties.value;
-              if(status){
-                return "black";
-              }else if(value){
-                return color(value);
+        // Plot the points with initial translation
+        var points = svg.selectAll("circle")
+            .data(data.features)
+            .enter()
+            .append("circle")
+            .attr("cx", function(d) {
+                return xScale(d.geometry.coordinates[0]) + margin.left; // Add margin.left to move points
+            })
+            .attr("cy", function(d) {
+                return yScale(d.geometry.coordinates[1]) + margin.top; // Add margin.top to move points
+            })
+            .attr("r", 5) // Initial radius
+            .style("fill", (d)=>{
+              //return "blue"
+              if(selectedStation !== "" || selectedStation !== undefined){
+                console.log("Search!")
+                let name = d.properties.name;
+                let status = d.properties.data.status;
+                if(name && status){
+                  return "red"
+                }else if(!name && status){
+                  return "lightred"
+                }else if(name && !status){
+                  return "green"
+                }else{
+                  return "lightgree"
+                }
               }else{
-                return "blue"
+                if(d.properties.data){
+                let status = d.properties.data.status;
+                let value = d.properties.value;
+                if(status){
+                  return "lightblack";
+                }else if(value){
+                  return color(value);
+                }else{
+                  return "lightblue"
+                }
+                }else{
+                  return "black"
+                }
               }
-            }else{
-              return "black"
-            }
-          })
-          //Our new hover effects
-          .on("mousemove", function (event, station) {
-            var mousePosition = [event.x, event.y];
-            var htmlText = station.properties.name + "(" + station.properties.commune + ")";
-            if(station.properties.data){
+            })
+            //Our new hover effects
+            .on("mousemove", function (event, station) {
+              var mousePosition = [event.x, event.y];
+              var htmlText = station.properties.name + "(" + station.properties.commune + ")";
+              if(station.properties.data){
+                let availabilities = station.properties.data;
+                htmlText += "<br><ul>"+
+                  "<li>Capacité maximale : "+availabilities.capacities+"</li>"+
+                  "<li>Vélos electriques : "+availabilities.electricalBikes+"</li>"+
+                  "<li>Vélos electriques (batterie interne) : "+availabilities.electricalInternalBatteryBikes+"</li>"+
+                  "<li>Vélos electriques (batterie externe) : "+availabilities.electricalRemovableBatteryBikes+"</li>"+
+                  "<li>Vélos méchaniques : "+availabilities.mechanicalBikes+"</li>"+
+                  "<li>Stands : "+availabilities.stands+"</li>"+
+                  "</ul>"
+              }else{
+                htmlText += "<br/>Aucune pour le jour en cours!"
+              }
+              tooltip
+                .classed("hidden", false)
+                .attr(
+                  "style",
+                  "left:" +
+                    (mousePosition[0] + 1) +
+                    "px; top:" +
+                    (mousePosition[1] - 35) +
+                    "px"
+                )
+                .html(htmlText);
+            })
+            .on("mouseout", function (event, station) {
+              //d3.select(this).transition().duration("50").attr("opacity", "1");
+              tooltip.classed("hidden", true);
+            })
+            .on("click",(_,station)=>{
               let availabilities = station.properties.data;
-              htmlText += "<br><ul>"+
-                "<li>Capacité maximale : "+availabilities.capacities+"</li>"+
-                "<li>Vélos electriques : "+availabilities.electricalBikes+"</li>"+
-                "<li>Vélos electriques (batterie interne) : "+availabilities.electricalInternalBatteryBikes+"</li>"+
-                "<li>Vélos electriques (batterie externe) : "+availabilities.electricalRemovableBatteryBikes+"</li>"+
-                "<li>Vélos méchaniques : "+availabilities.mechanicalBikes+"</li>"+
-                "<li>Stands : "+availabilities.stands+"</li>"+
-                "</ul>"
-            }else{
-              htmlText += "<br/>Aucune pour le jour en cours!"
-            }
-            tooltip
-              .classed("hidden", false)
-              .attr(
-                "style",
-                "left:" +
-                  (mousePosition[0] + 1) +
-                  "px; top:" +
-                  (mousePosition[1] - 35) +
-                  "px"
-              )
-              .html(htmlText);
-          })
-          .on("mouseout", function (event, station) {
-            //d3.select(this).transition().duration("50").attr("opacity", "1");
-            tooltip.classed("hidden", true);
-          })
-          .on("click",(_,station)=>{
-            let availabilities = station.properties.data;
-            data = [
-              {category:'Electriques',value:availabilities.electricalBikes*10 || 0},
-              {category:'Electriques (batterie interne)',value:availabilities.electricalInternalBatteryBikes*10 || 0},
-              {category:'Electriques (batterie externe)',value:availabilities.electricalRemovableBatteryBikes*10 || 0},
-              {category:'Méchaniques',value:availabilities.mechanicalBikes*10 || 0},
-            ]
-            showBarPlot(data,station.properties.name, station.properties.status == "open");
-          })
-          ;
+              data = [
+                {category:'Electriques',value:availabilities.electricalBikes*10 || 0},
+                {category:'Electriques (batterie interne)',value:availabilities.electricalInternalBatteryBikes*10 || 0},
+                {category:'Electriques (batterie externe)',value:availabilities.electricalRemovableBatteryBikes*10 || 0},
+                {category:'Méchaniques',value:availabilities.mechanicalBikes*10 || 0},
+              ]
+              showBarPlot(data,station.properties.name, station.properties.status == "open");
+            })
+            ;
 
-      // Add zoom functionality
-      var zoom = d3.zoom()
-          .scaleExtent([1, 10])
-          .on("zoom", function(event) {
-              // Update point radius based on zoom scale
-              points.attr("r", 5 / event.transform.k); // Adjust 5 as needed
-              svg.attr("transform", event.transform);
-          });
+        // Add zoom functionality
+        var zoom = d3.zoom()
+            .scaleExtent([1, 10])
+            .on("zoom", function(event) {
+                // Update point radius based on zoom scale
+                points.attr("r", 5 / event.transform.k); // Adjust 5 as needed
+                svg.attr("transform", event.transform);
+            });
 
-      svg.call(zoom);
+        svg.call(zoom);
+      });
     });
-  });
+  }
+  drawMap("");
   </script>
 </body>
