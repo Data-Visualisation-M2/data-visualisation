@@ -24,6 +24,9 @@
   </style>
       <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@3.4.1/dist/css/bootstrap.min.css"
       integrity="sha384-HSMxcRTRxnN+Bdg0JdbxYKrThecOKuH5zCYotlSAcp1+c8xmyTe9GYg1l9a69psu" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+        crossorigin="" />
 </head>
 
 <body style="color: #fff; background-color: black;">
@@ -34,6 +37,10 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@3.4.1/dist/js/bootstrap.min.js"
   integrity="sha384-aJ21OjlMXNL5UyIl/XNwTMqvzeRMZH2w8c5cRVpzpU8Y5bApTppSuUkhZXN0VxHd"
   crossorigin="anonymous"></script>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+  integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="">
+  </script>
 
   <div class="modal fade" id="exampleModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
     <div class="modal-dialog" role="document">
@@ -101,7 +108,8 @@
 
   </div>
   <button type="button" class="btn btn-danger" data-toggle="modal" data-target="#exampleModal">Mode de transport choisis</button>
-  <table style="width:100">
+  <!--
+  <table style="width:100, height: 90%;">
     <tr>
       <td id="map" style="width: 50;">
         <h5>Carte des stations vélov dans lyon et sa banlieue.</h5>
@@ -111,6 +119,9 @@
       </td>
     </tr>
   </table>
-  <script src="./src.js">
-  </script>
+    -->
+  <div id ="map" style="width: 50%; height:500px;">
+    <script src="./src.js">
+    </script>
+  </div>
 </body>
