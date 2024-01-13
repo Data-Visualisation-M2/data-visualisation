@@ -33,6 +33,8 @@ var width, height, lastUpdateDate;
 var svg;
 var mapData;
 
+var map;
+
 var currentPosition = {
   'lat':45.75,
   'lon':4.85
@@ -139,6 +141,7 @@ function isMapFiltered(){
 }
 
 function doesStationContainsInput(availabilities){
+  console.log(availabilities)
   if(filter.electricalBikes && availabilities.electricalBikes <= 0){
     return false;
   }
@@ -160,26 +163,13 @@ function projectPoint(x, y) {
 }
 
 function drawMap(){
-  d3.select("#velovMap").remove();
-  var svg = d3
-    .select(map.getPanes().overlayPane)
-    .append("svg");/*
-    .attr("width", (document.width !== undefined) ? document.width : document.body.offsetWidth)
-    .attr("height", height + margin.top + margin.bottom)
-    .attr("id", "velovMap")
-    .append("g")
-    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");  */
-  
-  var g = svg.append("g").attr("class","leaflet-zoom-hide");
-  var transform = d3.geoPath.transform({point:projectPoint}),
-    path = d3.geoPath.path().projectPoint(transform);
-
-  var feature = g.selectAll("path").data(mapData.features).enter().append("path");
-  feature.attr("d",path);
+  if(map != undefined){
+    map.remove();
+  }
 
   document.getElementById("currentDate").innerHTML = "Actuellement " + lastUpdateDate;
-  /*
-  var xScale = d3.scaleLinear()
+  
+  /*var xScale = d3.scaleLinear()
     .domain([d3.min(mapData.features, d => d.geometry.coordinates[0]), d3.max(mapData.features, d => d.geometry.coordinates[0])])
     .range([0, width]);
 
@@ -187,16 +177,25 @@ function drawMap(){
     .domain([d3.min(mapData.features, d => d.geometry.coordinates[1]), d3.max(mapData.features, d => d.geometry.coordinates[1])])
     .range([height, 0]);
 
-  var points = svg.selectAll("circle")
+  var svg = d3.select(map.getPanes().overlayPane).append("svg"),
+  g = svg.append("g").attr("class", "leaflet-zoom-hide");*/
+
+  /*
+  var points = 
+    d3
+    .select("#map")
+    .select("svg")
+    .selectAll("mycircles")
     .data(mapData.features)
     .enter()
     .append("circle")
-    .attr("cx", function (d) {
-      return xScale(d.geometry.coordinates[0])+1;
+    .attr("cx", function(d){ return map.latLngToLayerPoint([d.geometry.coordinates[0], d.geometry.coordinates[1]]).x })
+    .attr("cy", function(d){ return map.latLngToLayerPoint([d.geometry.coordinates[0], d.geometry.coordinates[1]]).y })
+    /*
+    .attr("cx", function(d){
+        return d.geometry.coordinates[0]
     })
-    .attr("cy", function (d) {
-      return yScale(d.geometry.coordinates[1])+5;
-    })
+    .attr("cy", function(d){ return d.geometry.coordinates[1]})
     .attr("r", (d)=>{
       return d.properties.bike_stands/5;
     })
@@ -264,7 +263,30 @@ function drawMap(){
       ]
       showBarPlot(data, station.properties.name, station.properties.status == "OPEN");
     })
-    ;
+    ;*/
+    /*
+    d3.select("#map")
+    .select("svg")
+    .append("mycircles");
+
+    d3.select("#map")
+    .select("svg")
+    .selectAll("myCircles")
+    .data(mapData.features)
+    .enter()
+    .append("circle")
+      .attr("cx", function(d){
+        return map.latLngToLayerPoint(
+          [d.geometry.coordinates[0], d.geometry.coordinates[1]]
+          ).x
+      })
+      .attr("cy", function(d){ console.log(d);return map.latLngToLayerPoint([d.geometry.coordinates[0], d.geometry.coordinates[1]]).y })
+      .attr("r", 14)
+      .style("fill", "red")
+      .attr("stroke", "red")
+      .attr("stroke-width", 3)
+      .attr("fill-opacity", .4)
+
     if(isMapFiltered()){
       var points2 = svg.selectAll(".circle")
       .data(mapData.features)
@@ -289,18 +311,113 @@ function drawMap(){
       .attr("fill",(d)=>"white")
       ;
     }
+    map.on("moveend",update);
+    */
+   // mapid is the id of the div where the map will appear
+    map = L
+    .map('velovMap')
+    .setView([45.763420, 4.834277], 13);   // center position + zoom
 
-  var zoom = d3.zoom()
-    .scaleExtent([1, 10])
-    .on("zoom", function (event) {
-      points.attr("r", 5 / event.transform.k);
-      if(isMapFiltered()){
-        points2.attr("r", 5 / event.transform.k);
+    // Add a tile to the map = a background. Comes from OpenStreetmap
+    var layer = L.tileLayer(
+      'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a>',
+      minZoom: 11,
+      maxZoom: 17,
+      }).addTo(map);
+
+    // Add a svg layer to the map
+    L.svg().addTo(map);
+
+    // Select the svg area and add circles:
+    d3.select("#velovMap")
+    .select("svg")
+    .selectAll("myCircles")
+    .data(mapData.features)
+    .enter()
+    .append("circle")
+    .attr("cx", function(d){
+      return map.latLngToLayerPoint(
+        [d.geometry.coordinates[1], d.geometry.coordinates[0]]
+      ).x
+    })
+    .attr("cy", function(d){
+      return map.latLngToLayerPoint(
+        [d.geometry.coordinates[1], d.geometry.coordinates[0]]
+      ).y
+    })
+    .attr("r", (d)=>{
+      return d.properties.bike_stands/5;
+    })
+    .style("fill", (d) => {
+      if (d.properties.data) {
+        let status = d.properties.data.status;
+        let availabilities = d.properties.data;
+        if(isMapFiltered()){
+          if(doesStationContainsInput(availabilities)){
+            d.selectable=false;
+            return "green";
+          }else{
+            d.selectable=true;
+            return "grey";
+          }
+        }else{
+          if (status === "CLOSED" || d.properties.bike_stands === 0) {
+            d.selectable=false;
+            return "red";
+          } else if (status === "OPEN") {
+            d.selectable=true;
+            return "green";
+          }
+        }
       }
-      svg.attr("transform", event.transform);
-    });
+    })
+    .on("click",()=>{console.log("click")})
+    .attr("fill-opacity", .75)
 
-  svg.call(zoom);*/
+    if(isMapFiltered()){
+      console.log(filter);
+      d3.select("#velovMap")
+      .select("svg")
+      .selectAll("myCircles")
+      .data(mapData.features)
+      .enter()
+      .append("circle")
+      .attr("r", (d)=>{
+        let availabilities = d.properties.data;
+        let totalNumber = d.properties.bike_stands;
+        stationRatio = ratio(availabilities,totalNumber);
+        if(totalNumber === 0){
+          return 0;
+        }else{
+          return stationRatio*(d.properties.bike_stands/5);
+        }
+      })
+      .attr("fill",(d)=>"white")
+      .attr("fill-opacity", 0.3)
+      ;
+    }
+
+    // If the user change the map (zoom or drag), I update circle position:
+    map.on("moveend", update);
+}
+
+// Function that update circle position if something change
+function update() {
+d3.selectAll("circle")
+  .attr("cx", function(d){
+    return map.latLngToLayerPoint(
+      [d.geometry.coordinates[1], d.geometry.coordinates[0]]
+    ).x
+  })
+  .attr("cy", function(d){
+    return map.latLngToLayerPoint(
+      [d.geometry.coordinates[1], d.geometry.coordinates[0]]
+    ).y
+  })
+  .on("click",()=>{
+    console.log(station);
+  })
 }
 
 function getCurrentLocation(){
@@ -385,5 +502,4 @@ function updateFilter(electricalBikesUpdated, electricalInternalBatteryBikesUpda
     filter.mechanicalBikes = mechanicalBikesUpdated;
   drawMap();
 }
-map = initLeaftletMap();
 initMapData();

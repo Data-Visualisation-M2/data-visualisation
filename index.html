@@ -38,9 +38,8 @@
   integrity="sha384-aJ21OjlMXNL5UyIl/XNwTMqvzeRMZH2w8c5cRVpzpU8Y5bApTppSuUkhZXN0VxHd"
   crossorigin="anonymous"></script>
 
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-  integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="">
-  </script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.3.4/dist/leaflet.css" integrity="sha512-puBpdR0798OZvTTbP4A8Ix/l+A4dHDD0DGqYW6RQ+9jxkRFclaxxQb/SJAWZfWAkuyeQUytO7+7N4QKrDh+drA==" crossorigin=""/>
+<script src="https://unpkg.com/leaflet@1.3.4/dist/leaflet.js" integrity="sha512-nMMmRyTVoLYqjP9hrbed9S+FzjZHW5gY1TWCHA5ckwXZBadntCNs8kEqAWdrb9O7rxbCaA4lKTIWjDXZxflOcA==" crossorigin=""></script>
 
   <div class="modal fade" id="exampleModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
     <div class="modal-dialog" role="document">
@@ -108,20 +107,8 @@
 
   </div>
   <button type="button" class="btn btn-danger" data-toggle="modal" data-target="#exampleModal">Mode de transport choisis</button>
-  <!--
-  <table style="width:100, height: 90%;">
-    <tr>
-      <td id="map" style="width: 50;">
-        <h5>Carte des stations vélov dans lyon et sa banlieue.</h5>
-      </td>
-      <td id="detailledInfos" style="width: 50;">
-        <h5 id="velovDetailedInfos"></h5>
-      </td>
-    </tr>
-  </table>
-    -->
-  <div id ="map" style="width: 50%; height:500px;">
-    <script src="./src.js">
-    </script>
+  <div id ="velovMap" style="width: 50%; height:500px;">
   </div>
+  <script src="./src.js">
+  </script>
 </body>
