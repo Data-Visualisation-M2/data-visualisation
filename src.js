@@ -4,18 +4,13 @@ var width = 768,
   height = 580;
 
 var filter = {
-  electricalBikes:false,
-  electricalInternalBatteryBikes:false,
-  electricalRemovableBatteryBikes:false,
-  mechanicalBikes:false
+  electricalBikes: false,
+  electricalInternalBatteryBikes: false,
+  electricalRemovableBatteryBikes: false,
+  mechanicalBikes: false
 };
 
 var margin = { top: 20, right: 20, bottom: 20, left: 20 };
-
-var tooltip = d3
-  .select("#detailledInfos")
-  .append("div")
-  .attr("class", "hidden tooltip");
 
 var color = d3.scaleQuantize()
   .range(["#edf8e9", "#bae4b3", "#74c476", "#31a354", "#006d2c"])
@@ -35,11 +30,14 @@ var mapData;
 
 var map;
 
+var color = d3.scaleQuantize().range(["#00F00", "#95FF66", "#C8FF23", "#FFC2A6", "#FF6B5E", "#FF0000"])
+
 var currentPosition = {
-  'lat':45.75,
-  'lon':4.85
+  'lat': 45.75,
+  'lon': 4.85
 }
 
+var tooltipDiv;
 
 function maxValue(data) {
   var max = -1;
@@ -136,22 +134,21 @@ function showBarPlot(data, name, open) {
     .text("Vélos disponibles");
 }
 
-function isMapFiltered(){
+function isMapFiltered() {
   return Object.values(filter).some(singleInput => singleInput === true);
 }
 
-function doesStationContainsInput(availabilities){
-  console.log(availabilities)
-  if(filter.electricalBikes && availabilities.electricalBikes <= 0){
+function doesStationContainsInput(availabilities) {
+  if (filter.electricalBikes && availabilities.electricalBikes <= 0) {
     return false;
   }
-  if(filter.electricalInternalBatteryBikes && availabilities.electricalInternalBatteryBikes <= 0){
+  if (filter.electricalInternalBatteryBikes && availabilities.electricalInternalBatteryBikes <= 0) {
     return false
   }
-  if(filter.electricalRemovableBatteryBikes && availabilities.electricalRemovableBatteryBikes <= 0){
+  if (filter.electricalRemovableBatteryBikes && availabilities.electricalRemovableBatteryBikes <= 0) {
     return false;
   }
-  if(filter.mechanicalBikes && availabilities.mechanicalBikes <= 0){
+  if (filter.mechanicalBikes && availabilities.mechanicalBikes <= 0) {
     return false;
   }
   return true;
@@ -162,344 +159,267 @@ function projectPoint(x, y) {
   this.stream.point(point.x, point.y);
 }
 
-function drawMap(){
-  if(map != undefined){
+function getStationColor(station) {
+  if (station.properties.data) {
+    let status = station.properties.data.status;
+    let availabilities = station.properties.data;
+    if (isMapFiltered()) {
+      if (doesStationContainsInput(availabilities)) {
+        station.selectable = false;
+        return "green";
+      } else {
+        station.selectable = true;
+        return "grey";
+      }
+    } else {
+      if (status === "CLOSED" || station.properties.bike_stands === 0) {
+        station.selectable = false;
+        return "red";
+      } else if (status === "OPEN") {
+        station.selectable = true;
+        return "green";
+      }
+    }
+  }
+}
+
+function toRadian(degree) {
+  return degree * Math.PI / 180;
+}
+
+function computeDistanceFromUser(currentGeoLoc) {
+  mapData.features.forEach((currentStation)=>{
+    let lon1 = toRadian(currentGeoLoc.lon),
+        lat1 = toRadian(currentGeoLoc.lat);
+        lon2 = toRadian(currentStation.properties.lng),
+        lat2 = toRadian(currentStation.properties.lat);
+
+    let deltaLat = lat2 - lat1,
+        deltaLon = lon2 - lon1;
+
+    let a = Math.pow(Math.sin(deltaLat / 2), 2) + Math.cos(lat1) * Math.cos(lat2) * Math.pow(Math.sin(deltaLon / 2), 2),
+      c = 2 * Math.asin(Math.sqrt(a));
+
+    let EARTH_RADIUS = 6731;
+    let distance = c * EARTH_RADIUS * 1000;
+    currentStation.distanceFromUser = distance;
+  });
+}
+function displayHover(coordinates, station) {
+  var htmlText = station.properties.name + "(" + station.properties.commune + ")";
+  if (station.properties.data) {
+    tooltipDiv
+      .transition()
+      .duration(200)
+      .style("opacity", 0.9)
+    let availabilities = station.properties.data;
+    htmlText += "<br><ul>" +
+      "<li>Capacité maximale : " + availabilities.capacities + "</li>" +
+      "<li>Vélos electriques : " + availabilities.electricalBikes + "</li>" +
+      "<li>Vélos electriques (batterie interne) : " + availabilities.electricalInternalBatteryBikes + "</li>" +
+      "<li>Vélos electriques (batterie externe) : " + availabilities.electricalRemovableBatteryBikes + "</li>" +
+      "<li>Vélos mécaniques : " + availabilities.mechanicalBikes + "</li>" +
+      "<li>Stands : " + availabilities.stands + "</li>" +
+      "</ul>";
+  } else {
+    htmlText += "<br/>Aucune pour le jour en cours!"
+  }
+  tooltipDiv
+    .style("left", coordinates.x + 10 + "px")
+    .style("top", coordinates.y + 10 + "px");
+  tooltipDiv.html(htmlText);
+}
+
+function getFilteredStationRadius(station) {
+  let availabilities = station.properties.data;
+  let totalNumber = station.properties.bike_stands;
+  stationRatio = ratio(availabilities, totalNumber);
+  if (totalNumber === 0) {
+    return 0;
+  } else {
+    return stationRatio * (station.properties.bike_stands / 5);
+  }
+}
+
+function drawMap() {
+  if (map != undefined) {
     map.remove();
   }
 
   document.getElementById("currentDate").innerHTML = "Actuellement " + lastUpdateDate;
-  
-  /*var xScale = d3.scaleLinear()
-    .domain([d3.min(mapData.features, d => d.geometry.coordinates[0]), d3.max(mapData.features, d => d.geometry.coordinates[0])])
-    .range([0, width]);
 
-  var yScale = d3.scaleLinear()
-    .domain([d3.min(mapData.features, d => d.geometry.coordinates[1]), d3.max(mapData.features, d => d.geometry.coordinates[1])])
-    .range([height, 0]);
-
-  var svg = d3.select(map.getPanes().overlayPane).append("svg"),
-  g = svg.append("g").attr("class", "leaflet-zoom-hide");*/
-
-  /*
-  var points = 
-    d3
-    .select("#map")
-    .select("svg")
-    .selectAll("mycircles")
-    .data(mapData.features)
-    .enter()
-    .append("circle")
-    .attr("cx", function(d){ return map.latLngToLayerPoint([d.geometry.coordinates[0], d.geometry.coordinates[1]]).x })
-    .attr("cy", function(d){ return map.latLngToLayerPoint([d.geometry.coordinates[0], d.geometry.coordinates[1]]).y })
-    /*
-    .attr("cx", function(d){
-        return d.geometry.coordinates[0]
-    })
-    .attr("cy", function(d){ return d.geometry.coordinates[1]})
-    .attr("r", (d)=>{
-      return d.properties.bike_stands/5;
-    })
-    .style("fill", (d) => {
-      if (d.properties.data) {
-        let status = d.properties.data.status;
-        let availabilities = d.properties.data;
-        if(isMapFiltered()){
-          if(doesStationContainsInput(availabilities)){
-            d.selectable=false;
-            return "green";
-          }else{
-            d.selectable=true;
-            return "grey";
-          }
-        }else{
-          if (status === "CLOSED" || d.properties.bike_stands === 0) {
-            d.selectable=false;
-            return "red";
-          } else if (status === "OPEN") {
-            d.selectable=true;
-            return "green";
-          }
-        }
-      }
-    })
-    .on("mousemove", function (event, station) {
-      var mousePosition = [event.x, event.y];
-      var htmlText = station.properties.name + "(" + station.properties.commune + ")";
-      if (station.properties.data) {
-        let availabilities = station.properties.data;
-        htmlText += "<br><ul>" +
-          "<li>Capacité maximale : " + availabilities.capacities + "</li>" +
-          "<li>Vélos electriques : " + availabilities.electricalBikes + "</li>" +
-          "<li>Vélos electriques (batterie interne) : " + availabilities.electricalInternalBatteryBikes + "</li>" +
-          "<li>Vélos electriques (batterie externe) : " + availabilities.electricalRemovableBatteryBikes + "</li>" +
-          "<li>Vélos méchaniques : " + availabilities.mechanicalBikes + "</li>" +
-          "<li>Stands : " + availabilities.stands + "</li>" +
-          "</ul>"
-      } else {
-        htmlText += "<br/>Aucune pour le jour en cours!"
-      }
-      tooltip
-        .classed("hidden", false)
-        .attr(
-          "style",
-          "left:" +
-          (mousePosition[0] + 1) +
-          "px; top:" +
-          (mousePosition[1] - 35) +
-          "px"
-        )
-        .html(htmlText);
-    })
-    .on("mouseout", function (event, station) {
-      tooltip.classed("hidden", true);
-    })
-    .on("click", (_, station) => {
-      let availabilities = station.properties.data;
-      data = [
-        { category: 'Electriques', value: availabilities.electricalBikes * 10 || 0 },
-        { category: 'Electriques (batterie interne)', value: availabilities.electricalInternalBatteryBikes * 10 || 0 },
-        { category: 'Electriques (batterie externe)', value: availabilities.electricalRemovableBatteryBikes * 10 || 0 },
-        { category: 'Méchaniques', value: availabilities.mechanicalBikes * 10 || 0 },
-      ]
-      showBarPlot(data, station.properties.name, station.properties.status == "OPEN");
-    })
-    ;*/
-    /*
-    d3.select("#map")
-    .select("svg")
-    .append("mycircles");
-
-    d3.select("#map")
-    .select("svg")
-    .selectAll("myCircles")
-    .data(mapData.features)
-    .enter()
-    .append("circle")
-      .attr("cx", function(d){
-        return map.latLngToLayerPoint(
-          [d.geometry.coordinates[0], d.geometry.coordinates[1]]
-          ).x
-      })
-      .attr("cy", function(d){ console.log(d);return map.latLngToLayerPoint([d.geometry.coordinates[0], d.geometry.coordinates[1]]).y })
-      .attr("r", 14)
-      .style("fill", "red")
-      .attr("stroke", "red")
-      .attr("stroke-width", 3)
-      .attr("fill-opacity", .4)
-
-    if(isMapFiltered()){
-      var points2 = svg.selectAll(".circle")
-      .data(mapData.features)
-      .enter()
-      .append("circle")
-      .attr("cx", function (d) {
-        return xScale(d.geometry.coordinates[0]) + margin.left;
-      })
-      .attr("cy", function (d) {
-        return yScale(d.geometry.coordinates[1]) + margin.top;
-      })
-      .attr("r", (d)=>{
-        let availabilities = d.properties.data;
-        let totalNumber = d.properties.bike_stands;
-        stationRatio = ratio(availabilities,totalNumber);
-        if(totalNumber === 0){
-          return 0;
-        }else{
-          return stationRatio*(d.properties.bike_stands/5);
-        }
-      })
-      .attr("fill",(d)=>"white")
-      ;
-    }
-    map.on("moveend",update);
-    */
-   // mapid is the id of the div where the map will appear
-    map = L
+  map = L
     .map('velovMap')
-    .setView([45.763420, 4.834277], 13);   // center position + zoom
+    .setView([45.763420, 4.834277], 13);
 
-    // Add a tile to the map = a background. Comes from OpenStreetmap
-    var layer = L.tileLayer(
-      'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a>',
-      minZoom: 11,
-      maxZoom: 17,
-      }).addTo(map);
 
-    // Add a svg layer to the map
-    L.svg().addTo(map);
+  L.tileLayer(
+    'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a>',
+    minZoom: 11,
+    maxZoom: 17,
+  }).addTo(map);
 
-    // Select the svg area and add circles:
-    d3.select("#velovMap")
-    .select("svg")
-    .selectAll("myCircles")
-    .data(mapData.features)
-    .enter()
-    .append("circle")
-    .attr("cx", function(d){
-      return map.latLngToLayerPoint(
-        [d.geometry.coordinates[1], d.geometry.coordinates[0]]
-      ).x
-    })
-    .attr("cy", function(d){
-      return map.latLngToLayerPoint(
-        [d.geometry.coordinates[1], d.geometry.coordinates[0]]
-      ).y
-    })
-    .attr("r", (d)=>{
-      return d.properties.bike_stands/5;
-    })
-    .style("fill", (d) => {
-      if (d.properties.data) {
-        let status = d.properties.data.status;
-        let availabilities = d.properties.data;
-        if(isMapFiltered()){
-          if(doesStationContainsInput(availabilities)){
-            d.selectable=false;
-            return "green";
-          }else{
-            d.selectable=true;
-            return "grey";
-          }
-        }else{
-          if (status === "CLOSED" || d.properties.bike_stands === 0) {
-            d.selectable=false;
-            return "red";
-          } else if (status === "OPEN") {
-            d.selectable=true;
-            return "green";
-          }
+  L.svg().addTo(map);
+
+  L.geoJSON(mapData, {
+    pointToLayer: (feature, latlng) => {
+      return L.circleMarker(
+        latlng,
+        {
+          radius: feature.properties.bike_stands / 5,
+          color: getStationColor(feature),
+          weight: 1,
+          opacity: 0.95,
+          fillOpacity: 0.75
         }
-      }
-    })
-    .on("click",()=>{console.log("click")})
-    .attr("fill-opacity", .75)
+      )
+    },
 
-    if(isMapFiltered()){
-      console.log(filter);
-      d3.select("#velovMap")
-      .select("svg")
-      .selectAll("myCircles")
-      .data(mapData.features)
-      .enter()
-      .append("circle")
-      .attr("r", (d)=>{
-        let availabilities = d.properties.data;
-        let totalNumber = d.properties.bike_stands;
-        stationRatio = ratio(availabilities,totalNumber);
-        if(totalNumber === 0){
-          return 0;
-        }else{
-          return stationRatio*(d.properties.bike_stands/5);
+    onEachFeature: (feature, layer) => {
+      layer.on('click', (e) => {
+        let availabilities = feature.properties.data;
+        data = [
+          {
+            category: 'Electriques',
+            value: availabilities.electricalBikes * 10 || 0
+          },
+          {
+            category: 'Electriques (batterie interne)',
+            value: availabilities.electricalInternalBatteryBikes * 10 || 0
+          },
+          {
+            category: 'Electriques (batterie externe)',
+            value: availabilities.electricalRemovableBatteryBikes * 10 || 0
+          },
+          {
+            category: 'Mécaniques',
+            value: availabilities.mechanicalBikes * 10 || 0
+          },
+        ]
+        showBarPlot(data, feature.properties.name, feature.properties.status == "OPEN");
+      });
+      layer.on('mouseover', (event, d) => {
+        tooltipDiv = d3
+          .select("body")
+          .append("div")
+          .attr("class", "tooltip")
+          .style("opacity", 0);
+        let coordinates = {
+          x: event.originalEvent.pageX,
+          y: event.originalEvent.pageY
+        }
+        displayHover(coordinates, feature);
+      });
+      layer.on('mouseout', (e) => {
+        tooltipDiv.innerHTML = "";
+        tooltipDiv
+          .transition()
+          .duration(500)
+          .style("opacity", 0);
+        let elements = document.getElementsByClassName("tooltip");
+        while (elements.length > 0) {
+          elements[0].parentNode.removeChild(elements[0]);
         }
       })
-      .attr("fill",(d)=>"white")
-      .attr("fill-opacity", 0.3)
-      ;
     }
+  }).addTo(map);
 
-    // If the user change the map (zoom or drag), I update circle position:
-    map.on("moveend", update);
+  if (isMapFiltered()) {
+    L.geoJSON(mapData, {
+      pointToLayer: (feature, latlng) => {
+        let filteredRadius = getFilteredStationRadius(feature);
+        return L.circleMarker(
+          latlng,
+          {
+            radius: filteredRadius,
+            fillColor: getStationColor(feature),
+            color: getStationColor(feature),
+            weight: 1,
+            opacity: 0.3,
+            fillOpacity: 0.3
+          }
+        )
+      },
+    }).addTo(map);
+  }
 }
 
-// Function that update circle position if something change
-function update() {
-d3.selectAll("circle")
-  .attr("cx", function(d){
-    return map.latLngToLayerPoint(
-      [d.geometry.coordinates[1], d.geometry.coordinates[0]]
-    ).x
-  })
-  .attr("cy", function(d){
-    return map.latLngToLayerPoint(
-      [d.geometry.coordinates[1], d.geometry.coordinates[0]]
-    ).y
-  })
-  .on("click",()=>{
-    console.log(station);
-  })
-}
-
-function getCurrentLocation(){
-  if(navigator.geolocation){
+function getCurrentLocation() {
+  if (navigator.geolocation) {
     navigator.geolocation.getCurrentPosition(updatePosition);
-  }else{
+  } else {
     alert("Geolocation is not supported in this browser! The browser will use a default location!");
   }
 }
 
-function updatePosition(position){
+function updatePosition(position) {
   currentPosition.lat = position.coords.latitude;
   currentPosition.lon = position.coords.longitude;
 }
 
-function ratio(availabilities,totalNumber){
+function ratio(availabilities, totalNumber) {
   var totalNumberOfStations = 0;
-  if(totalNumber === 0){
+  if (totalNumber === 0) {
     return 0;
   } else {
-    if(filter.electricalBikes){
+    if (filter.electricalBikes) {
       totalNumberOfStations += availabilities.electricalBikes;
     }
-    if(filter.electricalInternalBatteryBikes){
+    if (filter.electricalInternalBatteryBikes) {
       totalNumberOfStations += availabilities.electricalInternalBatteryBikes;
     }
-    if(filter.electricalRemovableBatteryBikes){
+    if (filter.electricalRemovableBatteryBikes) {
       totalNumberOfStations += availabilities.electricalRemovableBatteryBikes;
     }
-    if(filter.mechanicalBikes){
+    if (filter.mechanicalBikes) {
       totalNumberOfStations += availabilities.mechanicalBikes;
     }
-    return totalNumberOfStations/totalNumber;
+    return totalNumberOfStations / totalNumber;
   }
 }
 
 function initMapData() {
   getCurrentLocation();
-  d3.json("lyon.json").then((geoJSON) => {
-    d3.json("data.json").then(function (data) {
-      var margin = { top: 20, right: 20, bottom: 20, left: 20 };
-      width = 500 - margin.left - margin.right;
-      height = 500 - margin.top - margin.bottom;
+  d3.json("data.json").then(function (data) {
+    var margin = { top: 20, right: 20, bottom: 20, left: 20 };
+    width = 500 - margin.left - margin.right;
+    height = 500 - margin.top - margin.bottom;
 
-      lastUpdateDate = data.features[0].properties.last_update_gl.replace(/\.\d+/, "").substring(0, 19).replace("T", " ");
+    lastUpdateDate = data.features[0].properties.last_update_gl.replace(/\.\d+/, "").substring(0, 19).replace("T", " ");
 
-      for (var i = 0; i < data.features.length; i++) {
-        let currentData = data.features[i].properties;
-        let availabilities = currentData.main_stands.availabilities;
-        let capacity = currentData.total_stands.capacity;
-        currentData.value =
-          (
-            availabilities.bikes +
-            availabilities.electricalBikes +
-            availabilities.electricalInternalBatteryBikes +
-            availabilities.electricalRemovableBatteryBikes +
-            availabilities.mechanicalBikes
-          )
-          / capacity;
-        availabilities['capacities'] = capacity
-        currentData.data = availabilities;
-        if (currentData.status == "OPEN" || currentData.status == "CLOSED") {
-          currentData.data["status"] = currentData.status;
-        }
+    for (var i = 0; i < data.features.length; i++) {
+      let currentData = data.features[i].properties;
+      let availabilities = currentData.main_stands.availabilities;
+      let capacity = currentData.total_stands.capacity;
+      currentData.value =
+        (
+          availabilities.bikes +
+          availabilities.electricalBikes +
+          availabilities.electricalInternalBatteryBikes +
+          availabilities.electricalRemovableBatteryBikes +
+          availabilities.mechanicalBikes
+        )
+        / capacity;
+      availabilities['capacities'] = capacity
+      currentData.data = availabilities;
+      if (currentData.status == "OPEN" || currentData.status == "CLOSED") {
+        currentData.data["status"] = currentData.status;
       }
-      mapData = data;
-      drawMap();
-    });
+    }
+    mapData = data;
+    computeDistanceFromUser(currentPosition);
+
+    drawMap();
   });
 }
 
-function initLeaftletMap(){
-  return new L.Map("map", {center: [45.75,4.85], zoom: 12})
-  .addLayer(new L.TileLayer("http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"));
-}
-
 function updateFilter(electricalBikesUpdated, electricalInternalBatteryBikesUpdated,
-  electricalRemovableBatteryBikesUpdated, mechanicalBikesUpdated){
-    filter.electricalBikes = electricalBikesUpdated;
-    filter.electricalInternalBatteryBikes = electricalInternalBatteryBikesUpdated;
-    filter.electricalRemovableBatteryBikes = electricalRemovableBatteryBikesUpdated;
-    filter.mechanicalBikes = mechanicalBikesUpdated;
+  electricalRemovableBatteryBikesUpdated, mechanicalBikesUpdated) {
+  filter.electricalBikes = electricalBikesUpdated;
+  filter.electricalInternalBatteryBikes = electricalInternalBatteryBikesUpdated;
+  filter.electricalRemovableBatteryBikes = electricalRemovableBatteryBikesUpdated;
+  filter.mechanicalBikes = mechanicalBikesUpdated;
   drawMap();
 }
 initMapData();
