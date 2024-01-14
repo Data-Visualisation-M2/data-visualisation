@@ -51,13 +51,17 @@ function maxValue(data) {
 }
 
 function showBarPlot(data, name, open) {
-  d3.select("#bar-plot").remove();
+  d3.select("#detailedData").select("svg").remove();
+  let container = d3.select("#detailedData");
+  let svg = container.append("svg")
+  .attr("height","100%")
+  .attr("width","100%");
 
-
-  var barPlotGroup = d3.select("body").select("svg").append("g")
-    .attr("id", "bar-plot")
-    .attr("transform", "translate(" + (width - 200) + ", " + (height - 200) + ")");
-
+  var barPlotGroup = svg.append("g")
+    .attr("transform", "translate(225px, 210px)")
+    .attr("width","100%")
+    .attr("height","100%")
+    .attr("id", "bar-plot");
 
   var barWidth = 30;
   var barSpacing = 5;
@@ -67,38 +71,45 @@ function showBarPlot(data, name, open) {
 
   var labelOffset = 20;
 
-  var max = maxValue(data);
+  document.getElementById("stationName").innerHTML = name;
+  document.getElementById("stationStatus").innerHTML = open? "Ouvert" : "Fermé";
+  document.getElementById("stationStatus").style.color = open? "#00B600" : "#D40000";
 
   barPlotGroup.selectAll("rect")
     .data(data)
     .enter().append("rect")
-    .attr("x", function (d, i) { return i * (barWidth + barSpacing); })
-    .attr("y", function (d) { return -d.value; })
+    .attr("x", (d, i) => {
+      return i * (barWidth + barSpacing);
+    })
+    .attr("y", (d) => {
+      return -d.value;
+    })
     .attr("width", barWidth)
     .attr("height", function (d) { return d.value; })
     .style("fill", "steelblue")
+    .attr("class","rectangle")
     .text((d) => d.value);
 
-  barPlotGroup.selectAll("text").append("text")
+    barPlotGroup.selectAll(".text")
+      .data(data)
+      .enter().append("text")
+      .attr("x", (d, i) => { return -5 + (i * (barWidth + barSpacing) + barWidth / 2); })
+      .attr("y", (d) => { return labelOffset; })
+      .attr("text-anchor", "right")
+      .style("fill", "white")
+      .attr("transform", (d, i) => {
+        return "rotate(-315 " + (i * (barWidth + barSpacing) + barWidth / 2) + " 15)";
+      })
+      .text((d) => d.category );
+  
+  barPlotGroup.selectAll("text")
+    .append("text")
     .attr("x", function (d, i) { return i * (barWidth + 5) + barWidth / 2; })
     .attr("y", 255)
     .attr("text-anchor", "middle")
     .attr("class", "label")
     .style("fill", "white")
     .text((d) => "Station " + name);
-
-
-  barPlotGroup.selectAll("text")
-    .data(data)
-    .enter().append("text")
-    .attr("x", function (d, i) { return -5 + (i * (barWidth + barSpacing) + barWidth / 2); })
-    .attr("y", function (d) { return labelOffset; })
-    .attr("text-anchor", "right")
-    .style("fill", "white")
-    .attr("transform", function (d, i) {
-      return "rotate(-315 " + (i * (barWidth + barSpacing) + barWidth / 2) + " 15)";
-    })
-    .text(function (d) { return d.category; }).exit();
 
   barPlotGroup.selectAll(".text")
     .data(data)
@@ -108,30 +119,7 @@ function showBarPlot(data, name, open) {
     .attr("text-anchor", "middle")
     .style("fill", "white")
     .text(function (d) { return d.value; });
-
-  barPlotGroup.append("text")
-    .attr("x", (width / 8))
-    .attr("y", -max - 80)
-    .attr("text-anchor", "middle")
-    .style("font-size", "16px")
-    .style("fill", "white")
-    .text("Station " + name);
-
-  barPlotGroup.append("text")
-    .attr("x", (width / 8))
-    .attr("y", -max - 60)
-    .attr("text-anchor", "middle")
-    .style("font-size", "16px")
-    .style("fill", open ? "darkgreen" : "darkred")
-    .text(open ? "Ouvert" : "Fermé");
-
-  barPlotGroup.append("text")
-    .attr("x", (width / 8))
-    .attr("y", -max - 40)
-    .attr("text-anchor", "middle")
-    .style("font-size", "16px")
-    .style("fill", "white")
-    .text("Vélos disponibles");
+    
 }
 
 function isMapFiltered() {
