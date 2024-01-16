@@ -39,17 +39,6 @@ var currentPosition = {
 
 var tooltipDiv;
 
-function maxValue(data) {
-  var max = -1;
-  for (var i = 0; i < data.length; i++) {
-    let value = data[i].value;
-    if (value > max) {
-      max = value
-    }
-  }
-  return max;
-}
-
 function showBarPlot(data, name, open) {
   d3.select("#detailedData").select("svg").remove();
   let container = d3.select("#detailedData");
@@ -153,10 +142,10 @@ function getStationColor(station) {
     let availabilities = station.properties.data;
     if (isMapFiltered()) {
       if (doesStationContainsInput(availabilities)) {
-        station.selectable = false;
+        station.selectable = true;
         return "green";
       } else {
-        station.selectable = true;
+        station.selectable = false;
         return "grey";
       }
     } else {
@@ -220,12 +209,16 @@ function displayHover(coordinates, station) {
 
 function getFilteredStationRadius(station) {
   let availabilities = station.properties.data;
-  let totalNumber = station.properties.bike_stands;
-  stationRatio = ratio(availabilities, totalNumber);
-  if (totalNumber === 0) {
+  if(doesStationContainsInput(availabilities)){
+    let totalNumber = station.properties.bike_stands;
+    stationRatio = ratio(availabilities, totalNumber);
+    if (totalNumber === 0) {
+      return 0;
+    } else {
+      return stationRatio * (station.properties.bike_stands / 5);
+    }
+  }else{
     return 0;
-  } else {
-    return stationRatio * (station.properties.bike_stands / 5);
   }
 }
 
@@ -314,22 +307,38 @@ function drawMap() {
   }).addTo(map);
 
   if (isMapFiltered()) {
+    console.log(mapData.feature)
     L.geoJSON(mapData, {
       pointToLayer: (feature, latlng) => {
-        let filteredRadius = getFilteredStationRadius(feature);
-        return L.circleMarker(
-          latlng,
-          {
-            radius: filteredRadius,
-            fillColor: getStationColor(feature),
-            color: getStationColor(feature),
-            weight: 1,
-            opacity: 0.3,
-            fillOpacity: 0.3
-          }
-        )
+        let availabilities = feature.properties.main_stands.availabilities;
+        if(doesStationContainsInput(availabilities)){
+          let filteredRadius = getFilteredStationRadius(feature);
+          return L.circleMarker(
+            latlng,
+            {
+              radius: filteredRadius*10,
+              fillColor: getFilteredStationColor(feature),
+              color: getFilteredStationColor(feature),
+              weight: 1,
+              opacity: 0.3,
+              fillOpacity: 0.3
+            }
+          )
+        }else{
+          return null;
+        }
       },
     }).addTo(map);
+  }
+}
+
+function getFilteredStationColor(station){
+  let availabilities = station.properties.main_stands.availabilities;
+  if(doesStationContainsInput(availabilities)){
+    //return color(station.distanceFromUser)
+    return "green";
+  }else{
+    return "grey";
   }
 }
 
@@ -344,6 +353,19 @@ function getCurrentLocation() {
 function updatePosition(position) {
   currentPosition.lat = position.coords.latitude;
   currentPosition.lon = position.coords.longitude;
+}
+
+function initFilteredMapColorRange(mapData, currentPosition){
+  computeDistanceFromUser(currentPosition);
+  color.domain([
+    d3.min(mapData, (singleStation)=>{
+      return singleStation.distanceFromUser
+    }),
+    d3.max(mapData, (singleStation)=>{
+      return singleStation.distanceFromUser
+    })
+  ]);
+  console.log(color);
 }
 
 function ratio(availabilities, totalNumber) {
@@ -396,8 +418,7 @@ function initMapData() {
       }
     }
     mapData = data;
-    computeDistanceFromUser(currentPosition);
-
+    initFilteredMapColorRange(mapData.features, currentPosition);
     drawMap();
   });
 }

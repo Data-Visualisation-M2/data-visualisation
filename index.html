@@ -134,17 +134,22 @@
   <button type="button" class="btn btn-danger" data-toggle="modal" data-target="#exampleModal">Mode de transport choisis</button>
   <table>
     <tr>
-      <td style="position: absolute; width: 50%; left:0; height: 90%;">
+      <td style="position: absolute; width: 50%; left:0; height: 78%;">
         <div id ="velovMap">
         </div>
       </td>
-      <td style="position: absolute; width: 50%; right:0; height: 90%;">
+      <td style="position: absolute; width: 50%; right:0; height: 78%;">
         <h3 id="stationName"></h3>
         <p id="stationStatus"></p>
         <div id="detailedData"></div>
       </td>
     </tr>
   </table>
+  <footer style="bottom: 0; position:absolute;">
+    Projet réalisé avec les librairies d3.js, leaflet et bootstrap.
+    <br/>
+    Données du <a href="https://data.grandlyon.com/portail/fr/jeux-de-donnees/stations-velo-v-metropole-lyon-disponibilites-temps-reel/info">grand lyon des stations vélov'</a> utilisées sur la carte
+  </footer>
   <script src="./src.js">
   </script>
 </body>
