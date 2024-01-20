@@ -13,7 +13,7 @@ var filter = {
 var margin = { top: 20, right: 20, bottom: 20, left: 20 };
 
 var color = d3.scaleQuantize()
-  .range(["#edf8e9", "#bae4b3", "#74c476", "#31a354", "#006d2c"])
+  .range(["#edf8e9","#bae4b3","#74c476","#31a354","#006d2c"])
 
 var projection = d3
   .geoAlbersUsa()
@@ -207,19 +207,46 @@ function displayHover(coordinates, station) {
   tooltipDiv.html(htmlText);
 }
 
+function getStandardDeviation(ratioList){
+  if(!ratioList || !ratioList.length || ratioList.length === 0){
+    return 0;
+  }else{
+    const n = ratioList.length;
+    const mean = ratioList.reduce(
+      (firstRatio,secondRatio) => firstRatio+secondRatio
+    )/n;
+    return Math.sqrt(
+      ratioList.map(
+        ratio => Math.pow(ratio-mean,2)
+      ).reduce((firstRatio,secondRatio)=> firstRatio+secondRatio)/n
+    )
+  }
+}
+
 function getFilteredStationRadius(station) {
   let availabilities = station.properties.data;
   if(doesStationContainsInput(availabilities)){
     let totalNumber = station.properties.bike_stands;
-    stationRatio = ratio(availabilities, totalNumber);
+    let stationRatio = ratio(availabilities, totalNumber);
     if (totalNumber === 0) {
       return 0;
     } else {
-      return stationRatio * (station.properties.bike_stands / 5);
+      return stationRatio * (station.radius);
     }
   }else{
     return 0;
   }
+}
+
+function getRatios(stationList){
+  let ratioList = [];
+  stationList.map((singleStation)=>{
+    let availabilities = singleStation.properties.data;
+    let totalNumber = singleStation.properties.bike_stands;
+    let stationRatio = ratio(availabilities, totalNumber);
+    ratioList.push(stationRatio);
+  })
+  return ratioList;
 }
 
 function drawMap() {
@@ -245,10 +272,11 @@ function drawMap() {
 
   L.geoJSON(mapData, {
     pointToLayer: (feature, latlng) => {
+      feature.radius = feature.properties.bike_stands/5
       return L.circleMarker(
         latlng,
         {
-          radius: feature.properties.bike_stands / 5,
+          radius: feature.radius,
           color: getStationColor(feature),
           weight: 1,
           opacity: 0.95,
@@ -260,37 +288,51 @@ function drawMap() {
     onEachFeature: (feature, layer) => {
       layer.on('click', (e) => {
         let availabilities = feature.properties.data;
-        data = [
-          {
-            category: 'Electriques',
-            value: availabilities.electricalBikes * 10 || 0
-          },
-          {
-            category: 'Electriques (batterie interne)',
-            value: availabilities.electricalInternalBatteryBikes * 10 || 0
-          },
-          {
-            category: 'Electriques (batterie externe)',
-            value: availabilities.electricalRemovableBatteryBikes * 10 || 0
-          },
-          {
-            category: 'Mécaniques',
-            value: availabilities.mechanicalBikes * 10 || 0
-          },
-        ]
-        showBarPlot(data, feature.properties.name, feature.properties.status == "OPEN");
+        if(
+          isMapFiltered() && doesStationContainsInput(availabilities)
+          || !isMapFiltered()
+        ){
+          data = [
+            {
+              category: 'Electriques',
+              value: availabilities.electricalBikes * 10 || 0
+            },
+            {
+              category: 'Electriques (batterie interne)',
+              value: availabilities.electricalInternalBatteryBikes * 10 || 0
+            },
+            {
+              category: 'Electriques (batterie externe)',
+              value: availabilities.electricalRemovableBatteryBikes * 10 || 0
+            },
+            {
+              category: 'Mécaniques',
+              value: availabilities.mechanicalBikes * 10 || 0
+            },
+          ]
+          showBarPlot(data, feature.properties.name, feature.properties.status == "OPEN");
+        }else{
+          let name = feature.properties.name
+          alert("La station "+name+" que vous avez demandé pour l'affichage n'est pas disponible en raison du filtrage.\nEnlevez les filtrages pour la voir.")
+        }
       });
       layer.on('mouseover', (event, d) => {
-        tooltipDiv = d3
+        let availabilities = feature.properties.data;
+        if(
+          isMapFiltered() && doesStationContainsInput(availabilities)
+          || !isMapFiltered()
+        ){
+          tooltipDiv = d3
           .select("body")
           .append("div")
           .attr("class", "tooltip")
           .style("opacity", 0);
-        let coordinates = {
-          x: event.originalEvent.pageX,
-          y: event.originalEvent.pageY
+          let coordinates = {
+            x: event.originalEvent.pageX,
+            y: event.originalEvent.pageY
+          }
+          displayHover(coordinates, feature);
         }
-        displayHover(coordinates, feature);
       });
       layer.on('mouseout', (e) => {
         tooltipDiv.innerHTML = "";
@@ -307,26 +349,28 @@ function drawMap() {
   }).addTo(map);
 
   if (isMapFiltered()) {
-    console.log(mapData.feature)
-    L.geoJSON(mapData, {
+    let filteredStations = mapData.features.filter(
+      (singleStation) =>
+        doesStationContainsInput(
+          singleStation.properties.main_stands.availabilities
+        )
+    )
+    let ratios = getRatios(filteredStations);
+    let standardDeviation = getStandardDeviation(ratios);
+    console.log(standardDeviation);
+    L.geoJSON(filteredStations, {
       pointToLayer: (feature, latlng) => {
-        let availabilities = feature.properties.main_stands.availabilities;
-        if(doesStationContainsInput(availabilities)){
           let filteredRadius = getFilteredStationRadius(feature);
           return L.circleMarker(
             latlng,
             {
-              radius: filteredRadius*10,
-              fillColor: getFilteredStationColor(feature),
+              radius: 0.5*filteredRadius+feature.radius/6,
               color: getFilteredStationColor(feature),
               weight: 1,
               opacity: 0.3,
               fillOpacity: 0.3
             }
           )
-        }else{
-          return null;
-        }
       },
     }).addTo(map);
   }
@@ -335,16 +379,18 @@ function drawMap() {
 function getFilteredStationColor(station){
   let availabilities = station.properties.main_stands.availabilities;
   if(doesStationContainsInput(availabilities)){
-    //return color(station.distanceFromUser)
-    return "green";
+    return color(station.distanceFromUser);
   }else{
     return "grey";
   }
 }
+function displayErrorMessage(error){
+  alert("Vous avez refusé la gélocalisation! Elle se base alors sur la ville de Lyon à savoir 45.75° en latitude et 4.78° en longitude!")
+}
 
 function getCurrentLocation() {
   if (navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition(updatePosition);
+    navigator.geolocation.getCurrentPosition(updatePosition,displayErrorMessage);
   } else {
     alert("Geolocation is not supported in this browser! The browser will use a default location!");
   }
@@ -365,7 +411,6 @@ function initFilteredMapColorRange(mapData, currentPosition){
       return singleStation.distanceFromUser
     })
   ]);
-  console.log(color);
 }
 
 function ratio(availabilities, totalNumber) {
@@ -431,4 +476,5 @@ function updateFilter(electricalBikesUpdated, electricalInternalBatteryBikesUpda
   filter.mechanicalBikes = mechanicalBikesUpdated;
   drawMap();
 }
+
 initMapData();

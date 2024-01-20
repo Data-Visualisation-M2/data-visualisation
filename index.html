@@ -3,152 +3,97 @@
 <head>
   <meta charset="utf-8" />
   <script src="https://d3js.org/d3.v7.min.js"></script>
-  <style>
-    body {
-      margin: 0;
-      position: fixed;
-      top: 0;
-      right: 0;
-      bottom: 0;
-      left: 0;
-    }
-
-    div.tooltip {
-      color: #222;
-      background-color: #fff;
-      padding: 0.1em;
-      text-shadow: #f5f5f5 0 1 px 0;
-      opacity: 0.9;
-      position: absolute;
-    }
-    #velovMap{
-      width:100%;
-      height:100%;
-      position:absolute;
-      margin:0;
-      padding:0;
-      left:0
-    }
-    #bar-plot{
-      transform: translate(125px, 150px);
-      display: flex;
-      align-items: center;
-      height: 100%;
-    }
-
-    #detailedData{
-      height: 100%;
-      width: 100%;
-    }
-    #stationStatus{
-      text-align: center;
-    }
-    #stationName{
-      text-align: center;
-    }
-  </style>
-      <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@3.4.1/dist/css/bootstrap.min.css"
-      integrity="sha384-HSMxcRTRxnN+Bdg0JdbxYKrThecOKuH5zCYotlSAcp1+c8xmyTe9GYg1l9a69psu" crossorigin="anonymous">
+  <link rel="stylesheet" type="text/css" href="./res.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@3.4.1/dist/css/bootstrap.min.css"
+    integrity="sha384-HSMxcRTRxnN+Bdg0JdbxYKrThecOKuH5zCYotlSAcp1+c8xmyTe9GYg1l9a69psu" crossorigin="anonymous">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
-        crossorigin="" />
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
 </head>
 
 <body style="color: #fff; background-color: black;">
   <script src="https://code.jquery.com/jquery-1.12.4.min.js"
-  integrity="sha384-nvAa0+6Qg9clwYCGGPpDQLVpLNn0fRaROjHqs13t4Ggj3Ez50XnGQqc/r8MhnRDZ"
-  crossorigin="anonymous"></script>
-  
+    integrity="sha384-nvAa0+6Qg9clwYCGGPpDQLVpLNn0fRaROjHqs13t4Ggj3Ez50XnGQqc/r8MhnRDZ"
+    crossorigin="anonymous"></script>
+
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@3.4.1/dist/js/bootstrap.min.js"
-  integrity="sha384-aJ21OjlMXNL5UyIl/XNwTMqvzeRMZH2w8c5cRVpzpU8Y5bApTppSuUkhZXN0VxHd"
-  crossorigin="anonymous"></script>
+    integrity="sha384-aJ21OjlMXNL5UyIl/XNwTMqvzeRMZH2w8c5cRVpzpU8Y5bApTppSuUkhZXN0VxHd"
+    crossorigin="anonymous"></script>
 
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.3.4/dist/leaflet.css" integrity="sha512-puBpdR0798OZvTTbP4A8Ix/l+A4dHDD0DGqYW6RQ+9jxkRFclaxxQb/SJAWZfWAkuyeQUytO7+7N4QKrDh+drA==" crossorigin=""/>
-<script src="https://unpkg.com/leaflet@1.3.4/dist/leaflet.js" integrity="sha512-nMMmRyTVoLYqjP9hrbed9S+FzjZHW5gY1TWCHA5ckwXZBadntCNs8kEqAWdrb9O7rxbCaA4lKTIWjDXZxflOcA==" crossorigin=""></script>
-
-  <div class="modal fade" id="exampleModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
-    <div class="modal-dialog" role="document">
-      <div class="modal-content" style="background-color: #3D3D3C;">
-        <div class="modal-header">
-          <h5 class="modal-title" id="exampleModalLabel">
-            <h2>Types de vélos à afficher sur la carte</h2>
-            </h5>
-          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-            <span aria-hidden="true">&times;</span>
-          </button>
-        </div>
-        <div class="modal-body">
-          <table
-            class="table"
-            data-checkbox-header="false"
-            data-click-to-select="true">
-            <thead>
-              <tr>
-                <th data-field="bicycle-type">Type de vélo</th>
-              </tr>
-            </thead>
-            <tr>
-              <td>Vélos électriques (tous types)</td>
-              <td><input id="electricalBikes" type="checkbox" aria-label="Checkbox for following text input"></td>
-            </tr>
-            <tr>
-              <td>Vélos électriques (batterie interne)</td>
-              <td><input id="internElectricalBikes" type="checkbox" aria-label="Checkbox for following text input"></td>
-            </tr>
-            <tr>
-              <td>Vélos électriques (batterie externe)</td>
-              <td><input id="externalElectricalBikes" type="checkbox" aria-label="Checkbox for following text input"></td>
-            </tr>
-            <tr>
-              <td>Vélos mécaniques</td>
-              <td><input id="mechanicalBikes" type="checkbox" aria-label="Checkbox for following text input"></td>
-            </tr>
-          </table>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-dismiss="modal" style="background-color: black;">Annuler</button>
-          <button type="button" class="btn btn-primary" data-dismiss="modal" 
-            onclick="updateFilter(
-              document.querySelector('#electricalBikes').checked,
-              document.querySelector('#internElectricalBikes').checked,
-              document.querySelector('#externalElectricalBikes').checked,
-              document.querySelector('#mechanicalBikes').checked,
-            )"
-            >Confimer les filtres</button>
-        </div>
-      </div>
-    </div>
-  </div>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.3.4/dist/leaflet.css"
+    integrity="sha512-puBpdR0798OZvTTbP4A8Ix/l+A4dHDD0DGqYW6RQ+9jxkRFclaxxQb/SJAWZfWAkuyeQUytO7+7N4QKrDh+drA=="
+    crossorigin="" />
+  <script src="https://unpkg.com/leaflet@1.3.4/dist/leaflet.js"
+    integrity="sha512-nMMmRyTVoLYqjP9hrbed9S+FzjZHW5gY1TWCHA5ckwXZBadntCNs8kEqAWdrb9O7rxbCaA4lKTIWjDXZxflOcA=="
+    crossorigin=""></script>
 
   <div id="title" style="text-align: center; font-size: 3em;">
     Velov' tracker
   </div>
   <div id="subtitle" style="text-align: center;">
     Réalisé par Quentin CHAPEL dans la matière datavisualisation à l'université de Lyon 1.
-    <br/>
+    <br />
     Affichage des données de la liste des stations vélov' associée à une carte.
   </div>
   <div id="currentDate">
-
   </div>
-  <button type="button" class="btn btn-danger" data-toggle="modal" data-target="#exampleModal">Mode de transport choisis</button>
-  <table>
-    <tr>
-      <td style="position: absolute; width: 50%; left:0; height: 78%;">
-        <div id ="velovMap">
-        </div>
-      </td>
-      <td style="position: absolute; width: 50%; right:0; height: 78%;">
-        <h3 id="stationName"></h3>
-        <p id="stationStatus"></p>
-        <div id="detailedData"></div>
-      </td>
-    </tr>
-  </table>
-  <footer style="bottom: 0; position:absolute;">
-    Projet réalisé avec les librairies d3.js, leaflet et bootstrap.
-    <br/>
-    Données du <a href="https://data.grandlyon.com/portail/fr/jeux-de-donnees/stations-velo-v-metropole-lyon-disponibilites-temps-reel/info">grand lyon des stations vélov'</a> utilisées sur la carte
+
+  <h4>Filtrage sur la carte :</h4>
+  <div id="filtersInputList">
+    <div id="filterInput">
+      <input id="electricalBikes" type="checkbox" aria-label="Checkbox for following text input" onclick="updateFilter(
+              document.querySelector('#electricalBikes').checked,
+              document.querySelector('#internElectricalBikes').checked,
+              document.querySelector('#externalElectricalBikes').checked,
+              document.querySelector('#mechanicalBikes').checked,
+            )">
+      Vélos électriques (tous types)
+    </div>
+    <div id="filterInput">
+      <input id="internElectricalBikes" type="checkbox" aria-label="Checkbox for following text input">
+      Vélos électriques (batterie interne)
+    </div>
+    <div id="filterInput">
+      <input id="externalElectricalBikes" type="checkbox" aria-label="Checkbox for following text input" onclick="updateFilter(
+            document.querySelector('#electricalBikes').checked,
+            document.querySelector('#internElectricalBikes').checked,
+            document.querySelector('#externalElectricalBikes').checked,
+            document.querySelector('#mechanicalBikes').checked,
+          )">
+      Vélos électriques (batterie externe)
+    </div>
+    <div id="filterInput">
+      <input id="mechanicalBikes" type="checkbox" aria-label="Checkbox for following text input" onclick="updateFilter(
+        document.querySelector('#electricalBikes').checked,
+        document.querySelector('#internElectricalBikes').checked,
+        document.querySelector('#externalElectricalBikes').checked,
+        document.querySelector('#mechanicalBikes').checked,
+      )">
+      Vélos mécaniques
+    </div>
+  </div>
+  <div id="dataDisplayed">
+    <div id="velovMapCell">
+      <div id="velovMap">
+      </div>
+    </div>
+    <div id="detailedDataCell">
+      <h3 id="stationName"></h3>
+      <p id="stationStatus"></p>
+      <div id="detailedData"></div>
+    </div>
+  </div>
+  <footer>
+    Projet réalisé avec les librairies d3.js, leaflet et bootstrap. 
+    Projet inspiré du site <a href="https://velov.grandlyon.com/fr/mapping">vélov'</a>
+    Données du <a
+      href="https://data.grandlyon.com/portail/fr/jeux-de-donnees/stations-velo-v-metropole-lyon-disponibilites-temps-reel/info">grand
+      lyon des stations vélov'</a> utilisées sur la carte, mises à jour le 21 mars 2022.
+    <a href="https://lyondataviz.github.io/teaching/lyon1-m2/2023/">
+      Lien vers le cours
+    </a>
+    <a href="http://master-info.univ-lyon1.fr/DS/">
+      Lien vers la formation
+    </a>
   </footer>
   <script src="./src.js">
   </script>
