@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+
+<head>
+  <meta charset="utf-8" />
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <link rel="stylesheet" type="text/css" href="./res.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@3.4.1/dist/css/bootstrap.min.css"
+    integrity="sha384-HSMxcRTRxnN+Bdg0JdbxYKrThecOKuH5zCYotlSAcp1+c8xmyTe9GYg1l9a69psu" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+</head>
+
+<body style="color: #fff; background-color: black;">
+  <script src="https://code.jquery.com/jquery-1.12.4.min.js"
+    integrity="sha384-nvAa0+6Qg9clwYCGGPpDQLVpLNn0fRaROjHqs13t4Ggj3Ez50XnGQqc/r8MhnRDZ"
+    crossorigin="anonymous"></script>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@3.4.1/dist/js/bootstrap.min.js"
+    integrity="sha384-aJ21OjlMXNL5UyIl/XNwTMqvzeRMZH2w8c5cRVpzpU8Y5bApTppSuUkhZXN0VxHd"
+    crossorigin="anonymous"></script>
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.3.4/dist/leaflet.css"
+    integrity="sha512-puBpdR0798OZvTTbP4A8Ix/l+A4dHDD0DGqYW6RQ+9jxkRFclaxxQb/SJAWZfWAkuyeQUytO7+7N4QKrDh+drA=="
+    crossorigin="" />
+  <script src="https://unpkg.com/leaflet@1.3.4/dist/leaflet.js"
+    integrity="sha512-nMMmRyTVoLYqjP9hrbed9S+FzjZHW5gY1TWCHA5ckwXZBadntCNs8kEqAWdrb9O7rxbCaA4lKTIWjDXZxflOcA=="
+    crossorigin=""></script>
+
+  <div id="title" style="text-align: center; font-size: 3em;">
+    Velov' tracker
+  </div>
+  <div id="subtitle" style="text-align: center;">
+    Réalisé par Quentin CHAPEL dans la matière datavisualisation à l'université de Lyon 1.
+    <br />
+    Affichage des données de la liste des stations vélov' associée à une carte.
+  </div>
+  <div id="currentDate">
+  </div>
+
+  <h4>Filtrage sur la carte :</h4>
+  <div id="filtersInputList">
+    <div id="filterInput">
+      <input id="electricalBikes" type="checkbox" aria-label="Checkbox for following text input" onclick="updateFilter(
+              document.querySelector('#electricalBikes').checked,
+              document.querySelector('#internElectricalBikes').checked,
+              document.querySelector('#externalElectricalBikes').checked,
+              document.querySelector('#mechanicalBikes').checked,
+            )">
+      Vélos électriques (tous types)
+    </div>
+    <div id="filterInput">
+      <input id="internElectricalBikes" type="checkbox" aria-label="Checkbox for following text input">
+      Vélos électriques (batterie interne)
+    </div>
+    <div id="filterInput">
+      <input id="externalElectricalBikes" type="checkbox" aria-label="Checkbox for following text input" onclick="updateFilter(
+            document.querySelector('#electricalBikes').checked,
+            document.querySelector('#internElectricalBikes').checked,
+            document.querySelector('#externalElectricalBikes').checked,
+            document.querySelector('#mechanicalBikes').checked,
+          )">
+      Vélos électriques (batterie externe)
+    </div>
+    <div id="filterInput">
+      <input id="mechanicalBikes" type="checkbox" aria-label="Checkbox for following text input" onclick="updateFilter(
+        document.querySelector('#electricalBikes').checked,
+        document.querySelector('#internElectricalBikes').checked,
+        document.querySelector('#externalElectricalBikes').checked,
+        document.querySelector('#mechanicalBikes').checked,
+      )">
+      Vélos mécaniques
+    </div>
+  </div>
+  <div id="dataDisplayed">
+    <div id="velovMapCell">
+      <div id="velovMap">
+      </div>
+    </div>
+    <div id="detailedDataCell">
+      <h3 id="stationName"></h3>
+      <p id="stationStatus"></p>
+      <div id="detailedData"></div>
+    </div>
+  </div>
+  <footer>
+    Projet réalisé avec les librairies d3.js, leaflet et bootstrap. 
+    Projet inspiré du site <a href="https://velov.grandlyon.com/fr/mapping">vélov'</a>
+    Données du <a
+      href="https://data.grandlyon.com/portail/fr/jeux-de-donnees/stations-velo-v-metropole-lyon-disponibilites-temps-reel/info">grand
+      lyon des stations vélov'</a> utilisées sur la carte, mises à jour le 21 mars 2022.
+    <a href="https://lyondataviz.github.io/teaching/lyon1-m2/2023/">
+      Lien vers le cours
+    </a>
+    <a href="http://master-info.univ-lyon1.fr/DS/">
+      Lien vers la formation
+    </a>
+  </footer>
+  <script src="./src.js">
+  </script>
+</body>
